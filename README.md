@@ -72,18 +72,39 @@ Skipped 1 task(s) for lack of time:
 
 ## 🧪 Testing PawPal+
 
+Run the full test suite from the project root:
+
 ```bash
-# Run the full test suite:
-pytest
-
-# Run with coverage:
-pytest --cov
+python -m pytest
 ```
 
-Sample test output:
+The 25 tests in `tests/test_pawpal.py` exercise the scheduling behaviors that
+are easiest to get wrong:
+
+- **Sorting correctness** — tasks are returned in chronological order by time of
+  day, including unpadded hours (`"9:30"`), midnight/end-of-day boundaries, and
+  priority tie-breaks; sorting is non-destructive.
+- **Recurrence logic** — completing a `daily` task spawns a fresh occurrence due
+  the next day (and `weekly` a week out), the copy carries over all fields as a
+  distinct object, `once` tasks don't recur, and the new task is attached to the
+  correct pet.
+- **Conflict detection** — same-pet, same-time overlaps are flagged (including
+  3-way overlaps), while different times, different pets, completed tasks, and
+  future-dated occurrences correctly do *not* conflict.
+- **Planning & filtering** — the time-budget plan skips tasks that don't fit,
+  groups by pet without confusing look-alike tasks, and filters by status/pet.
+
+Successful test run:
 
 ```
-# Paste your pytest output here
+============================= test session starts =============================
+platform win32 -- Python 3.14.3, pytest-9.1.1, pluggy-1.6.0
+rootdir: c:\Users\mrmel\ai110-module2show-pawpal-starter
+collected 25 items
+
+tests\test_pawpal.py .........................                           [100%]
+
+============================= 25 passed in 0.04s ==============================
 ```
 
 ## 📐 Smarter Scheduling
