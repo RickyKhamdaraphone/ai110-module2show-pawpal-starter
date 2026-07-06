@@ -88,14 +88,48 @@ Sample test output:
 
 ## 📐 Smarter Scheduling
 
-> Fill in once you've implemented scheduling logic.
+Beyond the basic time-budget plan, PawPal+ implements four "smarter scheduling"
+features. Each is summarized below and documented in `pawpal_system.py`.
 
 | Feature | Method(s) | Notes |
 |---------|-----------|-------|
-| Task sorting | | e.g., by priority, duration |
-| Filtering | | e.g., skip tasks if time runs out |
-| Conflict handling | | e.g., overlapping time slots |
-| Recurring tasks | | e.g., daily vs. weekly |
+| Task sorting | `Scheduler.sort_by_time()` (+ `_prioritized()`, `_to_minutes()` helpers) | Chronological order by time of day; priority-then-duration order for planning |
+| Filtering | `Scheduler.filter_tasks()` (+ `get_plannable_tasks()`) | By completion status and/or pet name; combinable |
+| Conflict handling | `Scheduler.detect_conflicts()` (+ `has_conflicts()`) | Warns on same-pet, same-time overlaps — never crashes |
+| Recurring tasks | `Task.mark_complete()` → `Task.next_occurrence()` (attached via `Pet.complete_task()` / `Scheduler.mark_task_complete()`) | Daily/weekly tasks spawn the next occurrence automatically |
+
+### Sorting — `Scheduler.sort_by_time()`
+
+Orders a list of tasks by time of day, earliest first. It sorts on
+minutes-since-midnight (via the `_to_minutes()` helper) rather than the raw
+`"HH:MM"` string, so an unpadded `"9:30"` still sorts before `"13:05"`; ties
+break on priority. Task *planning* order is handled separately by
+`_prioritized()`, which sorts by priority (high first) then shortest duration.
+
+### Filtering — `Scheduler.filter_tasks()`
+
+Returns tasks filtered by completion status (`completed=True/False`) and/or
+owning pet (`pet_name=`, case-insensitive). Both filters are optional and
+combine with logical AND. The planner also uses `get_plannable_tasks()`, which
+filters to tasks that are due today and not yet done before ordering them.
+
+### Conflict detection — `Scheduler.detect_conflicts()`
+
+A lightweight check that flags when two unfinished tasks for the **same pet**
+are scheduled at the **same time of day**. Times are normalized to minutes
+(so `"7:30"` and `"07:30"` count as one slot), and same-time tasks on *different*
+pets are not treated as conflicts. It returns a list of human-readable warning
+strings (empty when clean) and never raises, so the UI can surface warnings
+without crashing. `has_conflicts()` is a boolean convenience wrapper.
+
+### Recurring tasks — `Task.mark_complete()` / `Task.next_occurrence()`
+
+When a `daily` or `weekly` task is marked complete, a fresh, incomplete copy is
+created for the next occurrence — due `today + 1 day` (daily) or `today + 7 days`
+(weekly), computed with `timedelta`. `once` tasks don't recur. `mark_complete()`
+returns the new occurrence; `Pet.complete_task()` and
+`Scheduler.mark_task_complete()` attach it to the correct pet automatically. A
+future-dated occurrence is hidden from today's plan by `Task.is_due_today()`.
 
 ## 📸 Demo Walkthrough
 
