@@ -24,6 +24,7 @@ classDiagram
         +updateInfo(weight float, age int, breed str) void
         +addHealthCondition(condition str) void
         +addTask(task Task) void
+        +completeTask(task Task) Task
         +getTasks() list~Task~
     }
 
@@ -33,8 +34,11 @@ classDiagram
         +str frequency
         +int priority
         +bool completed
+        +str scheduledTime
+        +date dueDate
         +toggleComplete() void
-        +markComplete() void
+        +markComplete() Task
+        +nextOccurrence() Task
         +isDone() bool
         +isDueToday() bool
     }
@@ -45,13 +49,19 @@ classDiagram
         +str location
         +getAllTasks() list~Task~
         +getTodaysTasks() list~Task~
+        +getPlannableTasks() list~Task~
+        +filterTasks(completed bool, petName str) list~Task~
         +generatePlan() list~Task~
-        +planByPet() dict
-        +markTaskComplete(task Task) void
-        +explainPlan() str
+        +planByPet(plan list~Task~) dict
+        +detectConflicts() list~str~
+        +hasConflicts() bool
+        +markTaskComplete(task Task) Task
+        +explainPlan(plan list~Task~) str
+        +sortByTime(tasks list~Task~) list~Task~
     }
 
     Owner "1" --> "*" Pet : owns
     Owner "1" --> "1" Scheduler : uses
     Pet "1" *-- "*" Task : has
     Scheduler ..> Owner : reads tasks from
+    Task ..> Task : spawns next occurrence

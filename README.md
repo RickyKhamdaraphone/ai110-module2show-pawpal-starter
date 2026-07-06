@@ -22,6 +22,32 @@ Your final app should:
 - Display the plan clearly (and ideally explain the reasoning)
 - Include tests for the most important scheduling behaviors
 
+## ✨ Features
+
+The algorithms and behaviors implemented in `pawpal_system.py`:
+
+- **Priority-based daily planning** — a greedy planner (`generate_plan()`) orders
+  today's unfinished tasks by priority (high first), then shortest duration, and
+  packs them until the day's time budget runs out.
+- **Sorting by time of day** — `sort_by_time()` orders tasks chronologically on
+  minutes-since-midnight, so unpadded hours like `"9:30"` sort correctly against
+  `"13:05"`, with priority as the tie-breaker.
+- **Conflict warnings** — `detect_conflicts()` flags two unfinished tasks for the
+  *same pet* at the *same time slot* (times normalized, so `"7:30"` == `"07:30"`),
+  returning human-readable warnings without ever raising.
+- **Daily / weekly recurrence** — completing a recurring task spawns its next
+  occurrence (due `today + 1 day` or `today + 7 days` via `timedelta`); `once`
+  tasks don't repeat.
+- **Due-date awareness** — `is_due_today()` hides future-dated occurrences from
+  today's plan, so a freshly spawned task doesn't appear next to the one just
+  completed.
+- **Task filtering** — `filter_tasks()` narrows by completion status and/or pet
+  name (case-insensitive), combinable with logical AND.
+- **Per-pet plan grouping** — `plan_by_pet()` groups the plan by pet using object
+  identity, so two pets with look-alike tasks are never confused.
+- **Plan explanation** — `explain_plan()` reports what was scheduled, total time
+  used, and which tasks were skipped for lack of time and why.
+
 ## Getting started
 
 ### Setup
@@ -154,12 +180,132 @@ future-dated occurrence is hidden from today's plan by `Task.is_due_today()`.
 
 ## 📸 Demo Walkthrough
 
-Describe your app in numbered steps so a reader can follow along without watching a video:
+PawPal+ has two front ends over the same core logic: an interactive **Streamlit
+app** (`app.py`) and a scripted **CLI demo** (`main.py`).
 
-1. <!-- Describe this step -->
-2. <!-- Describe this step -->
-3. <!-- Describe this step -->
-4. <!-- Describe this step -->
-5. <!-- Add more steps as needed -->
+### The Streamlit UI (`app.py`)
 
-**Screenshot or video** *(optional)*: <!-- Insert a screenshot or link to a demo video here -->
+Run it with `python -m streamlit run app.py`. The page is organized top-to-bottom
+into four sections, and a single `Owner` is kept alive across reruns in
+`st.session_state` so nothing you enter is lost when the script re-runs:
+
+- **Owner** — enter the owner's name and location.
+- **Add a Pet** — enter name, species, breed, weight, and age, then click
+  **Add pet**; it calls `Owner.add_pet()` and the pet appears in the list.
+- **Schedule a Task** — pick which pet the task is for, then enter a title,
+  duration, priority (low/medium/high), and frequency (daily/weekly/once).
+  **Add task** calls `Pet.add_task()`; each pet's current tasks are listed below.
+- **Build Schedule** — set the minutes available today and click
+  **Generate schedule** to see today's plan grouped by pet, followed by an
+  explanation of what was scheduled and what was skipped.
+
+### Example workflow
+
+1. Fill in the **Owner** name (e.g. "Ricky").
+2. In **Add a Pet**, enter `Biscuit`, species `dog`, breed `Golden Retriever`,
+   then click **Add pet**.
+3. In **Schedule a Task**, with Biscuit selected, add `Morning walk`, 30 min,
+   priority `high`, frequency `daily`, then click **Add task**. Repeat to add a
+   few more tasks (and add a second pet if you like).
+4. In **Build Schedule**, set *Time available today* to `60` and click
+   **Generate schedule**.
+5. Read the resulting **Today's Schedule** (grouped per pet) and the
+   **Why this plan** explanation showing scheduled vs. skipped tasks.
+
+### Key Scheduler behaviors on display
+
+The CLI demo (`main.py`) builds a sample household — two pets, tasks added *out of
+chronological order*, one task pre-completed, and a deliberate same-time clash —
+to exercise every algorithm at once:
+
+- **Priority planning + budget skipping** — the 45-min "Enrichment play" is
+  skipped because it doesn't fit the remaining time in a 60-min budget.
+- **Sorting by time** — the same tasks are re-printed in chronological order,
+  correctly placing the unpadded `7:30` first.
+- **Filtering** — tasks are filtered by pet, by completion status, and by both
+  combined.
+- **Daily recurrence** — completing "Morning walk" (due today) spawns a fresh
+  copy due tomorrow, attached to the same pet.
+- **Conflict warnings** — Mochi's "Litter cleaning" and "Brushing", both at
+  `12:00`, produce a single overlap warning.
+
+### Sample CLI output (`python main.py`)
+
+```
+============================================
+  Today's Schedule for Ricky
+  Time available: 60 min
+============================================
+
+Biscuit (Golden Retriever):
+  [ ] Morning walk (30 min, priority 3)
+
+Mochi (Tabby):
+  [ ] Litter cleaning (10 min, priority 2)
+  [ ] Medication (5 min, priority 3)
+  [ ] Brushing (10 min, priority 1)
+
+--------------------------------------------
+Planned 4 task(s) using 55 of 60 min available (location: Home).
+  - Medication (5 min, priority 3)
+  - Morning walk (30 min, priority 3)
+  - Litter cleaning (10 min, priority 2)
+  - Brushing (10 min, priority 1)
+Skipped 1 task(s) for lack of time:
+  - Enrichment play (45 min)
+
+============================================
+  Sorting & Filtering Demo
+============================================
+
+All tasks in insertion order (unsorted):
+  [ ] 16:00  Enrichment play (45 min, priority 1)
+  [ ] 7:30  Morning walk (30 min, priority 3)
+  [x] 08:00  Feeding (10 min, priority 3)
+  [ ] 12:00  Litter cleaning (10 min, priority 2)
+  [ ] 09:15  Medication (5 min, priority 3)
+  [ ] 12:00  Brushing (10 min, priority 1)
+
+Same tasks via sort_by_time() (chronological):
+  [ ] 7:30  Morning walk (30 min, priority 3)
+  [x] 08:00  Feeding (10 min, priority 3)
+  [ ] 09:15  Medication (5 min, priority 3)
+  [ ] 12:00  Litter cleaning (10 min, priority 2)
+  [ ] 12:00  Brushing (10 min, priority 1)
+  [ ] 16:00  Enrichment play (45 min, priority 1)
+
+filter_tasks(pet_name='Biscuit'):
+  [ ] 7:30  Morning walk (30 min, priority 3)
+  [x] 08:00  Feeding (10 min, priority 3)
+  [ ] 16:00  Enrichment play (45 min, priority 1)
+
+filter_tasks(completed=False) -- still to do:
+  [ ] 16:00  Enrichment play (45 min, priority 1)
+  [ ] 7:30  Morning walk (30 min, priority 3)
+  [ ] 12:00  Litter cleaning (10 min, priority 2)
+  [ ] 09:15  Medication (5 min, priority 3)
+  [ ] 12:00  Brushing (10 min, priority 1)
+
+filter_tasks(completed=True) -- already done:
+  [x] 08:00  Feeding (10 min, priority 3)
+
+filter_tasks(pet_name='Biscuit', completed=False):
+  [ ] 16:00  Enrichment play (45 min, priority 1)
+  [ ] 7:30  Morning walk (30 min, priority 3)
+
+============================================
+  Recurrence Demo
+============================================
+
+Before: Biscuit has 3 task(s).
+Completing 'Morning walk' (daily, due 2026-07-06)...
+After:  Biscuit has 4 task(s).
+  -> spawned next occurrence of 'Morning walk' due 2026-07-07 (done=False)
+
+============================================
+  Conflict Detection Demo
+============================================
+
+Found 1 conflict warning(s):
+  [!] Mochi: 2 tasks overlap at 12:00 (Litter cleaning, Brushing).
+```
