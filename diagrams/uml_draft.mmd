@@ -1,0 +1,48 @@
+classDiagram
+    %% PawPal+ class design
+    %% Update this file so it matches your final implementation.
+
+    class Owner {
+        +str name
+        +str email
+        +str location
+        +list~Pet~ pets
+        +addPet(pet Pet) void
+        +updateInfo(name str, email str, location str) void
+    }
+
+    class Pet {
+        +str name
+        +float weight
+        +int age
+        +str species
+        +str breed
+        +list~str~ healthConditions
+        +updateInfo(weight float, age int, breed str) void
+        +addHealthCondition(condition str) void
+    }
+
+    class Task {
+        +str description
+        +str category
+        +int durationMinutes
+        +int priority
+        +bool completed
+        +toggleComplete() void
+        +isDone() bool
+    }
+
+    class Scheduler {
+        +int availableMinutes
+        +str location
+        +list~Task~ tasks
+        +addTask(task Task) void
+        +generatePlan() list~Task~
+        +getTodaysTasks() list~Task~
+        +explainPlan() str
+    }
+
+    Owner "1" --> "*" Pet : owns
+    Owner "1" --> "1" Scheduler : uses
+    Pet "1" --> "*" Task : needs
+    Scheduler "1" o-- "*" Task : schedules
